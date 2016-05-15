@@ -111,13 +111,16 @@ namespace KerbalTerrainSystem
                         deformation.body.GetComponentInChildren<PQSMod_TerrainDeformation>().deformations.Add(deformation);
 
                         // Select the matching PQS quads
-                        PQ[] quads = Utility.FindNearbyQuads(deformation.body.pqsController, deformation.position, 9);
+                        PQ[] quads = Utility.FindNearbyQuads(deformation.body.pqsController, deformation.vPos, 9);
                         yield return null;
 
                         // Select Quads
                         foreach (PQ quad in quads)
                         {
                             quad.isBuilt = false;
+                            quad.isActive = true;
+                            quad.sphereRoot.quadAllowBuild = true;
+                            quad.isCached = false;
                             quad.Build();
                             typeof(PQS).GetMethod("UpdateEdgeNormals", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(deformation.body.pqsController, new[] { quad });
                             yield return null;
