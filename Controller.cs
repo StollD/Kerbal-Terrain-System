@@ -119,6 +119,7 @@ namespace KerbalTerrainSystem
                         {
                             quad.isBuilt = false;
                             quad.Build();
+                            typeof(PQS).GetMethod("UpdateEdgeNormals", BindingFlags.Instance | BindingFlags.NonPublic).Invoke(deformation.body.pqsController, new[] { quad });
                             yield return null;
                         }
                     }
