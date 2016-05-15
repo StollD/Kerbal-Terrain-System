@@ -22,13 +22,13 @@ namespace KerbalTerrainSystem
         /// <summary>
         /// Convert latitude-longitude-altitude with body radius to a vector.
         /// </summary>
-        public static Vector3d LLAtoECEF(double lat, double lon, double alt, double radius)
+        public static Vector3d LLAtoECEF(Double lat, Double lon, Double alt, Double radius)
         {
-            const double degreesToRadians = Math.PI / 180.0;
+            const Double degreesToRadians = Math.PI / 180.0;
             lat = (lat - 90) * degreesToRadians;
             lon *= degreesToRadians;
-            double x, y, z;
-            double n = radius; // for now, it's still a sphere, so just the radius
+            Double x, y, z;
+            Double n = radius; // for now, it's still a sphere, so just the radius
             x = (n + alt) * -1.0 * Math.Sin(lat) * Math.Cos(lon);
             y = (n + alt) * Math.Cos(lat); // for now, it's still a sphere, so no eccentricity
             z = (n + alt) * -1.0 * Math.Sin(lat) * Math.Sin(lon);
@@ -40,7 +40,7 @@ namespace KerbalTerrainSystem
         /// </summary>
         public static IEnumerator RebuildSphere(PQ[] quads, PQS pqs)
         {
-            for (int i = 0; i < quads.Length; i++)
+            for (Int32 i = 0; i < quads.Length; i++)
             {
                 PQ quad = quads[i];
                 quad.isBuilt = false;
@@ -53,10 +53,10 @@ namespace KerbalTerrainSystem
         /// <summary>
         /// Find quads that are near a transform
         /// </summary>
-        public static PQ[] FindNearbyQuads(PQS pqsVersion, Transform transform, int count)
+        public static PQ[] FindNearbyQuads(PQS pqsVersion, Vector3d position, Int32 count)
         {
             IEnumerable<PQ> quads = pqsVersion.GetComponentsInChildren<PQ>(true);
-            quads = quads.OrderBy(q => Vector3.Distance(q.quadTransform.position, transform.position)).Take(count);
+            quads = quads.OrderBy(q => Vector3.Distance(q.quadTransform.position, position)).Take(count);
             return quads.ToArray();
         }
     }

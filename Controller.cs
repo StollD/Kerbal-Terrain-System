@@ -5,8 +5,12 @@
  * Licensed under the terms of the MIT License
  */
 
+using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
+using System.Timers;
 using UnityEngine;
 
 namespace KerbalTerrainSystem
@@ -17,65 +21,109 @@ namespace KerbalTerrainSystem
     [KSPAddon(KSPAddon.Startup.MainMenu, false)]
     public class CollisionController : MonoBehaviour
     {
-        /// Singleton Instance
-        public static CollisionController Instance { get; private set; }
+        /// <summary>
+        /// Whether a part is exploding
+        /// </summary>
+        public Boolean isExploding { get; set; }
 
-        /// Is the Rebuilding-Process active
-        public bool isBuilding = false;
-
+        /// <summary>
+        /// The enqueued Deformations
+        /// </summary>
+        public Queue<Deformation> deformations { get; set; }
+        
+        /// <summary>
         /// Register the Vessel-Handler and stop the GarbageCollection
-        public void Start()
+        /// </summary>
+        void Start()
         {
-            /// Create the Singelton
-            if (Instance != null)
-                Destroy(this);
-            else
-                Instance = this;
+            // Register the Handler
+            GameEvents.onPartDie.Add(onPartDie);
 
-            /// Register the Handler
-            GameEvents.onVesselDestroy.Add(onVesselDestroy); // Use another hook?
-
-            /// Stop the GC
+            // Stop the GC
             DontDestroyOnLoad(this);
 
-            /// Add the Terrain-Handler to all bodies
+            // Create the Queue
+            deformations = new Queue<Deformation>();
+
+            // Add the Terrain-Handler to all bodies
             foreach (CelestialBody body in PSystemManager.Instance.localBodies.Where(b => b.pqsController != null))
             {
                 GameObject modObject = new GameObject("TerrainDeformation");
                 modObject.transform.parent = body.pqsController.transform;
                 PQSMod_TerrainDeformation mod = modObject.AddComponent<PQSMod_TerrainDeformation>();
                 mod.deformations = new List<Deformation>();
-                mod.order = int.MaxValue; // Make sure that we're the last mod
+                mod.order = Int32.MaxValue; // Make sure that we're the last mod
                 mod.modEnabled = true;
                 mod.sphere = body.pqsController;
             }
+
+            // Start the Coroutine
+            StartCoroutine(Update());
+            GameEvents.onGameSceneLoadRequested.Add(scene => StartCoroutine(Update()));
         }
 
-        /// If a vessel dies, rebuild the sphere
-        public void onVesselDestroy(Vessel vessel)
+        /// <summary>
+        /// If a part dies, rebuild the sphere
+        /// </summary>
+        void onPartDie(Part part)
         {
-            /// If there's no vessel, abort
-            if (vessel == null)
+            // If there's no part or vessel, abort
+            if (part == null || part.vessel == null)
                 return;
 
-            if (vessel.state == Vessel.State.DEAD) // More checking needed?
+            // Get the CelestialBody
+            CelestialBody body = part.vessel.mainBody;
+
+            // Get the Vessel
+            Vessel vessel = part.vessel;
+
+            // Create the Deformation
+            Deformation deformation = new Deformation
             {
-                /// Get the CelestialBody
-                CelestialBody body = vessel.mainBody;
+                position = Utility.LLAtoECEF(vessel.latitude, vessel.longitude, vessel.terrainAltitude, body.Radius),
+                vPos = vessel.vesselTransform.position,
+                altitude = vessel.terrainAltitude + body.Radius,
+                body = body,
+                surfaceSpeed = vessel.srfSpeed,
+                mass = part.mass + part.GetResourceMass(),
+                srfAngle = Vector3d.Angle(Vector3d.up, vessel.vesselTransform.forward)
+            };
+            deformations.Enqueue(deformation);
+        }
 
-                /// Create the Deformation
-                Deformation deformation = new Deformation()
+        /// <summary>
+        /// Apply the enqueued deformations
+        /// </summary>
+        private IEnumerator Update()
+        {
+            // Loops
+            while (true)
+            {
+                if (deformations.Any())
                 {
-                    position = Utility.LLAtoECEF(vessel.latitude, vessel.longitude, vessel.altitude, vessel.mainBody.Radius),
-                    body = vessel.mainBody,
-                    depth = 10d,
-                    width = 400d
-                };
-                body.GetComponentInChildren<PQSMod_TerrainDeformation>().deformations.Add(deformation);
+                    // Get the latest deformation
+                    Deformation deformation = deformations.Dequeue();
 
-                /// Rebuild the Sphere
-                PQ[] quads = Utility.FindNearbyQuads(body.pqsController, vessel.vesselTransform, 9);
-                StartCoroutine(Utility.RebuildSphere(quads, body.pqsController));
+                    // Check for no deformation
+                    if (deformation.GetDiameter() != 0d)
+                    {
+                        // Apply it
+                        deformation.body.GetComponentInChildren<PQSMod_TerrainDeformation>().deformations.Add(deformation);
+
+                        // Select the matching PQS quads
+                        PQ[] quads = Utility.FindNearbyQuads(deformation.body.pqsController, deformation.position, 9);
+                        yield return null;
+
+                        // Select Quads
+                        foreach (PQ quad in quads)
+                        {
+                            quad.isBuilt = false;
+                            quad.Build();
+                            yield return null;
+                        }
+                    }
+                }
+                yield return null;
             }
         }
     }

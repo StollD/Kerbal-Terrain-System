@@ -7,6 +7,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
+using UnityEngine;
 
 namespace KerbalTerrainSystem
 {
@@ -15,35 +17,31 @@ namespace KerbalTerrainSystem
     /// </summary>
     public class PQSMod_TerrainDeformation : PQSMod
     {
-        /// List with Deformations
+        // List with Deformations
         public List<Deformation> deformations;
 
-        /// Manipulate the terrain
+        // Setup
+        public override void OnSetup()
+        {
+            requirements |= PQS.ModiferRequirements.MeshColorChannel | PQS.ModiferRequirements.MeshCustomNormals;
+        }
+
+        // Manipulate the terrain
         public override void OnVertexBuildHeight(PQS.VertexBuildData data)
         {
-            /// Loop through the Deformations
+            // Loop through the Deformations
             foreach (Deformation deformation in deformations)
             {
-                /// Normalize the deformation position
-                Vector3d positionNorm = deformation.position.normalized;
+                // Get the angle between the two directions
+                Double cos = Vector3d.Dot(deformation.position.normalized, data.directionFromCenter);
 
-                /// Get a "normalizer"
-                double normalized = deformation.position.normalized.x / deformation.position.x;
+                // Determine the distance between the two points
+                Double distance = Math.Sqrt(data.vertHeight * data.vertHeight + deformation.altitude * deformation.altitude - 2 * data.vertHeight * deformation.altitude * cos);
 
-                /// Get the distance between the deformation and the VertexBuildData
-                float distance = (float)Vector3d.Distance(deformation.position.normalized, data.directionFromCenter);
-
-                /// If we are near enough...
-                if (distance <= (deformation.width * 0.5) * normalized)
+                // Determine whether the two positions are near enough
+                if (distance <= deformation.GetDiameter() * 10)
                 {
-                    /// ... lower height
-                    double vertHeight = data.vertHeight - deformation.depth;
-                    /// If the body has an ocean, set a limit
-                    if (sphere.mapOcean)
-                        vertHeight = Math.Max(sphere.radius + 5d, vertHeight);
-
-                    /// Set the new height
-                    data.vertHeight = vertHeight;
+                    data.vertColor = Color.blue;
                 }
             }
         }
