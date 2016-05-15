@@ -41,7 +41,7 @@ namespace KerbalTerrainSystem
                 // Determine whether the two positions are near enough
                 if (distance <= deformation.GetDiameter() * 10)
                 {
-                    data.vertColor = Color.blue;
+                    data.vertHeight -= deformation.GetDiameter() * (distance / deformation.GetDiameter()) * 0.5;
                 }
             }
         }
