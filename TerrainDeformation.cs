@@ -32,7 +32,14 @@ namespace KerbalTerrainSystem
                 // Build the Deformations
                 foreach (ConfigNode deformationNode in bodyNode.nodes)
                 {
-                    Deformation deformation = ConfigNode.CreateObjectFromConfig<Deformation>(deformationNode);
+                    Deformation deformation = new Deformation();
+                    deformation.altitude = Double.Parse(deformationNode.GetValue("altitude"));
+                    deformation.position = ConfigNode.ParseVector3D(deformationNode.GetValue("position"));
+                    deformation.vPos = ConfigNode.ParseVector3D(deformationNode.GetValue("vPos"));
+                    deformation.mass = Double.Parse(deformationNode.GetValue("mass"));
+                    deformation.srfAngle = Double.Parse(deformationNode.GetValue("srfAngle"));
+                    deformation.surfaceSpeed = Double.Parse(deformationNode.GetValue("surfaceSpeed"));
+                    deformation.body = body;
                     pqsDeformation.deformations.Add(deformation);
                 }
             }
@@ -54,7 +61,12 @@ namespace KerbalTerrainSystem
                 foreach (Deformation deformation in pqsDeformation.deformations)
                 {
                     ConfigNode deformationNode = bodyNode.AddNode("Deformation");
-                    ConfigNode.CreateConfigFromObject(deformation, deformationNode);
+                    deformationNode.AddValue("altitude", deformation.altitude);
+                    deformationNode.AddValue("position", ConfigNode.WriteVector(deformation.position));
+                    deformationNode.AddValue("vPos", ConfigNode.WriteVector(deformation.vPos));
+                    deformationNode.AddValue("mass", deformation.mass);
+                    deformationNode.AddValue("srfAngle", deformation.srfAngle);
+                    deformationNode.AddValue("surfaceSpeed", deformation.surfaceSpeed);
                 }
             }
         }
